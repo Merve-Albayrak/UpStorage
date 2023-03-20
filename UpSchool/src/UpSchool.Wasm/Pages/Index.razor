@@ -1,0 +1,159 @@
+﻿@page "/"
+
+<!--
+
+burası normalde bir component ama sayfa olarak algılanması için page
+ile / dan sonra sayfa ismini ayarlamamız lazım
+routelardeki id gibi gelcek no yu belirtebilirsin
+-->
+@using UpSchool.Domain.Dtos
+@using UpSchool.Domain.Entities;
+@using UpSchool.Domain.Services;
+@using UpSchool.Domain.Utilities
+@using UpSchool.Wasm.Common.Utilities;
+@using UpSchool.Wasm.Components
+@inject IJSRuntime JsRuntime
+@inject IToasterService ToastService
+@inject Blazored.LocalStorage.ILocalStorageService localStorage
+@inject HttpClient HttpClient
+@inject NavigationManager NavigationManager
+
+<div class="container">
+    <div class="row ">
+        <div class="col-md-12">
+            <div class="p-5 mb-4 bg-light rounded-3">
+                <div class="container-fluid">
+                    <h1 class="display-5 fw-bold text-center">My Accounts</h1>
+                    <hr />
+                    <div class="d-flex flex-row">
+                        <button class="btn btn-success" @onclick="@(() => NavigationManager.NavigateTo("/accounts/add"))">Add</button>
+                        <button class="btn btn-warning ms-2" @onclick="@(() => NavigationManager.NavigateTo("/accounts/add"))">Undo</button>
+                    </div>
+
+                    <hr />
+                    <div class="row">
+                        @foreach (var account in accounts)
+                        {
+                            <div class="col-md-4">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5 class="card-title text-center text-primary">@account.Title</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="input-group text-center">
+                                            <input type="text" class="form-control text-center" value="@account.UserName">
+                                            <span class="input-group-text oi oi-document clickable" id="basic-addon1"></span>
+                                        </div>
+                                        <div class="input-group text-center mt-2">
+                                            @if (account.ShowPassword)
+                                            {
+                                                <input type="text" class="form-control text-center" value="@account.Password">
+                                            }
+                                            else
+                                            {
+                                                <input type="password" class="form-control text-center" value="@account.Password">
+                                            }
+                                            <span class="input-group-text oi oi-eye clickable" @onclick="@(()=>SetShowPassword(account))"></span>
+                                            <span class="input-group-text oi oi-document clickable"></span>
+                                        </div>
+
+                                    </div>
+                                    <div class="card-footer">
+
+                                        <div class="d-flex justify-content-between" >
+
+                                            <button class="btn btn-info" @onclick="@(()=>GoToEditPage(account.Id))">
+
+                                                Edit
+
+                                            </button>
+                                            <button class="btn btn-danger" @onclick="@(()=>DeleteAccountAsync(account.Id))">
+                                                <button class="btn btn-info" @onclick="@(() => GoToEditPage(account.Id))">Edit</button>
+                                                Delete
+                                            </button>
+
+
+                                        </div>
+                                    </div>
+                                    
+
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+    @code
+{
+
+    List<AccountDto> accounts = new List<AccountDto>();
+
+    protected override async Task OnInitializedAsync()
+    {
+
+        accounts = await FetchAccountAsync();
+        await base.OnInitializedAsync();
+
+
+
+
+
+    }
+    private void GoToEditPage(Guid id)
+    {
+
+        NavigationManager.NavigateTo($"/accounts/edit/{id}");
+    }
+    private void SetShowPassword(AccountDto accountDto)
+    {
+
+
+        accountDto.ShowPassword = !accountDto.IsFavourite;
+        if (accountDto.ShowPassword)
+        {
+
+
+            accountDto.Password = StringHelper.Base64Decode(accountDto.Password);
+            return;
+        }
+        accountDto.Password = StringHelper.Base64Encode(accountDto.Password);
+    }
+
+    private async Task DeleteAccountAsync(Guid id)
+    {
+
+
+        var response = await HttpClient.DeleteAsync($"Accounts/{id}");
+        if (response.IsSuccessStatusCode)
+        {
+
+            var account = accounts.FirstOrDefault(x => x.Id == id);
+            accounts.Remove(account);
+
+            ToastService.ShowSuccess("The selected account was successfully deleted.");
+
+            return;
+        }
+
+    }
+
+    private  Task <List<AccountDto>?> FetchAccountAsync()
+    {
+
+
+        return HttpClient.GetFromJsonAsync<List<AccountDto>>("Accounts");
+    }
+
+}
+
+
+<style>
+    body {
+        background: #393E46
+    }
+</style>
